@@ -2,15 +2,18 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework import status, viewsets, permissions
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 import requests
 
 from .models import Listing, Booking, Payment
-from .serializers import ListingSerializer, BookingSerializer
+from .serializers import ListingSerializer, BookingSerializer, UserSerializer
 from .tasks import send_payment_confirmation_email, send_booking_confirmation_email
 
+User = get_user_model()
 
 # ----------------------------
 # Helper function for Chapa
@@ -139,3 +142,24 @@ class BookingViewSet(viewsets.ModelViewSet):
                 booking.id,
                 guest_name
             )
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    Provides full CRUD: list, retrieve, create, update, delete.
+    """
+
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    # Permission: allow safe methods for everyone, restrict writes to admins
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        """
+        Custom endpoint to return the current authenticated user.
+        Example: GET /api/users/me/
+        """
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)

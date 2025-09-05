@@ -1,11 +1,12 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import ListingViewSet, BookingViewSet, InitiatePaymentView, VerifyPaymentView
+from .views import ListingViewSet, BookingViewSet, InitiatePaymentView, VerifyPaymentView, UserViewSet
 
 # Initialize DRF router
 router = DefaultRouter()
 router.register(r'listings', ListingViewSet)
 router.register(r'bookings', BookingViewSet)
+router.register(r'users', UserViewSet, basename='user')
 
 # Standard URL patterns
 urlpatterns = [
