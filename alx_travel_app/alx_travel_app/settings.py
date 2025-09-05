@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 import environ
 from django.core.exceptions import ImproperlyConfigured
+from django.db import connections
+from django.db.utils import OperationalError
 
 logger = logging.getLogger(__name__)
 
@@ -108,36 +110,40 @@ TEMPLATES = [
     },
 ]
 
-# ------------------------------------------------------------------------------
-# DATABASES (MySQL with SQLite fallback in DEBUG)
-# ------------------------------------------------------------------------------
-try:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": env("DB_NAME"),
-            "USER": env("DB_USER"),
-            "PASSWORD": env("DB_PASSWORD"),
-            "HOST": env("DB_HOST", default="127.0.0.1"),
-            "PORT": env("DB_PORT", default="3306"),
-            "OPTIONS": {
-                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
+
+
+# --------------------------------------------------------------------------
+# DATABASES (MySQL with SQLite fallback if connection fails in DEBUG mode)
+# --------------------------------------------------------------------------
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": env("DB_NAME", default=""),
+        "USER": env("DB_USER", default=""),
+        "PASSWORD": env("DB_PASSWORD", default=""),
+        "HOST": env("DB_HOST", default="127.0.0.1"),
+        "PORT": env("DB_PORT", default="3306"),
+        "OPTIONS": {"init_command": "SET sql_mode='STRICT_TRANS_TABLES'"},
     }
-    logger.info(f"Using MySQL database: {env('DB_NAME')}")
-except ImproperlyConfigured as e:
-    if DEBUG:
-        logger.warning(f"MySQL config failed: {e}. Falling back to SQLite (DEBUG mode).")
+}
+
+# Try connecting to MySQL — if it fails in DEBUG, fallback to SQLite
+if DEBUG:
+    try:
+        conn = connections['default']
+        conn.cursor()  # force connection check
+        logger.info(f"✅ Connected to MySQL database: {DATABASES['default']['NAME']}")
+    except OperationalError as e:
+        logger.warning(
+            f"⚠️ MySQL connection failed: {e}. "
+            f"Falling back to SQLite (DEBUG mode only)."
+        )
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.sqlite3",
                 "NAME": BASE_DIR / "db.sqlite3",
             }
         }
-    else:
-        raise  # Fail hard in production
-
 # ------------------------------------------------------------------------------
 # PASSWORD VALIDATION
 # ------------------------------------------------------------------------------

@@ -77,7 +77,12 @@ class Payment(models.Model):
         ('REFUNDED', 'Refunded'),
     ]
 
-    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="payments")
+    booking = models.ForeignKey(
+        "Booking",
+        on_delete=models.CASCADE,
+        null=True,   # allow NULL for old rows
+        blank=True   # allow blank in forms
+    )
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='PENDING')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_id = models.CharField(max_length=100, unique=True)
