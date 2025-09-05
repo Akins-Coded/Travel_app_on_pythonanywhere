@@ -15,15 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, re_path, include
+from django.urls import path, include
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from django.conf import settings 
 
 schema_view = get_schema_view(
    openapi.Info(
       title="ALX Travel API",
-      default_version='v1',
+      default_version=settings.API_VERSION, 
       description="API documentation for your travel app",
       terms_of_service="https://www.example.com/terms/",
       contact=openapi.Contact(email="support@example.com"),
@@ -36,13 +37,11 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # Swagger documentation
-    re_path(r'^swagger/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-
-    # Optional: ReDoc
-    # re_path(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    # API Docs
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
 
-    # Include the listings app URLs
+    # Listings app endpoints
     path('api/', include('listings.urls')),
 ]

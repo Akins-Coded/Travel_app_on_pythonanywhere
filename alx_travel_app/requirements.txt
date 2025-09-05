@@ -5,7 +5,16 @@ django-cors-headers==4.7.0
 django-environ==0.12.0
 
 celery==5.5.3
+django-celery-beat
+django-celery-results
 requests
 
 mysqlclient==2.2.7
 
+
+# Environment management
+python-decouple
+django-environ
+
+# Production WSGI server
+gunicorn

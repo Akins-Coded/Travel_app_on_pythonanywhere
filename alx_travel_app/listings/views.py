@@ -59,7 +59,6 @@ class InitiatePaymentView(APIView):
 
                 # Save payment
                 payment = Payment.objects.create(
-                    booking_reference=f"booking-{booking.id}",
                     transaction_id=transaction_id,
                     amount=booking.price,
                     status="PENDING",
@@ -101,7 +100,7 @@ class VerifyPaymentView(APIView):
             if payment.status == "COMPLETED":
                 send_payment_confirmation_email.delay(
                     payment.booking.user.email,
-                    payment.booking_reference
+                    payment.booking.id,
                 )
 
             return Response({
@@ -120,16 +119,23 @@ class ListingViewSet(ModelViewSet):
     queryset = Listing.objects.all()
     serializer_class = ListingSerializer
 
-
-class BookingViewSet(ModelViewSet):
-    queryset = Booking.objects.all()
-    serializer_class = BookingSerializer
-
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
 
     def perform_create(self, serializer):
-        booking = serializer.save()
-        # Trigger async email
-        send_booking_confirmation_email.delay(booking.user.email, booking.id)
+        # Save booking with authenticated user
+        booking = serializer.save(user=self.request.user)
+
+        # Notify guest (user)
+        if booking.user and booking.user.email:
+            send_booking_confirmation_email.delay(booking.user.email, booking.id)
+
+        # Notify host
+        if booking.listing.host and booking.listing.host.email:
+            guest_name = booking.user.get_full_name() or booking.user.username
+            send_host_notification_email.delay(
+                booking.listing.host.email,
+                booking.id,
+                guest_name
+            )
