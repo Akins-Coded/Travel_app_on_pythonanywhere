@@ -15,7 +15,6 @@ mysqlclient==2.2.7
 
 
 # Environment management
-python-decouple
 django-environ
 
 # Production WSGI server
