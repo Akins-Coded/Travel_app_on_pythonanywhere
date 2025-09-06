@@ -1,29 +1,54 @@
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework import status, viewsets, permissions, generics
+import requests
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from django.conf import settings
-import requests
+from rest_framework import status, viewsets, permissions, generics
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Listing, Booking, Payment
-from .serializers import ListingSerializer, BookingSerializer, UserSerializer, UserSignupSerializer
-from .tasks import send_payment_confirmation_email, send_booking_confirmation_email
+from .serializers import (
+    ListingSerializer,
+    BookingSerializer,
+    UserSerializer,
+    UserSignupSerializer,
+)
+from .tasks import (
+    send_payment_confirmation_email,
+    send_booking_confirmation_email,
+    send_host_notification_email,
+    send_signup_confirmation_email,
+)
+from .utils import run_task   # task runner (Celery or sync fallback)
 
 User = get_user_model()
 
+
 # ----------------------------
-# Helper function for Chapa
+# User Signup
+# ----------------------------
+class UserSignupView(generics.CreateAPIView):
+    """Public endpoint to register a new user."""
+    queryset = User.objects.all()
+    serializer_class = UserSignupSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        run_task(send_signup_confirmation_email, user.username, user.email)
+
+
+# ----------------------------
+# Chapa Payment Helpers
 # ----------------------------
 def chapa_initiate_payment(booking):
-    """Prepare and send payment initiation request to Chapa"""
+    """Prepare and send payment initiation request to Chapa."""
     url = "https://api.chapa.co/v1/transaction/initialize"
     headers = {
         "Authorization": f"Bearer {settings.CHAPA_SECRET_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
     data = {
         "amount": str(booking.price),
@@ -32,36 +57,27 @@ def chapa_initiate_payment(booking):
         "first_name": booking.user.first_name,
         "last_name": booking.user.last_name,
         "tx_ref": f"booking-{booking.id}",
-        "callback_url": f"{settings.FRONTEND_URL}/payment/callback/"
+        "callback_url": f"{settings.FRONTEND_URL}/payment/callback/",
     }
     response = requests.post(url, json=data, headers=headers)
     return response.json(), response.status_code
 
 
 def chapa_verify_payment(transaction_id):
-    """Verify payment status with Chapa"""
+    """Verify payment status with Chapa."""
     url = f"https://api.chapa.co/v1/transaction/verify/{transaction_id}"
     headers = {"Authorization": f"Bearer {settings.CHAPA_SECRET_KEY}"}
     response = requests.get(url, headers=headers)
     return response.json(), response.status_code
 
 
-class UserSignupView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSignupSerializer
-    permission_classes = [AllowAny]
-
-    def perform_create(self, serializer):
-        user = serializer.save()
-        # Trigger email notification via Celery
-        send_signup_confirmation_email.delay(user.username, user.email)
-
-
 # ----------------------------
 # Payment Views
 # ----------------------------
 class InitiatePaymentView(APIView):
+    """Start a payment flow for a booking."""
     permission_classes = [IsAuthenticated]
+
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)
 
@@ -71,28 +87,35 @@ class InitiatePaymentView(APIView):
             if status_code == 200 and response_data.get("status") == "success":
                 transaction_id = response_data["data"]["id"]
 
-                # Save payment
                 payment = Payment.objects.create(
                     transaction_id=transaction_id,
                     amount=booking.price,
                     status="PENDING",
-                    booking=booking
+                    booking=booking,
                 )
 
-                return Response({
-                    "message": "Payment initiated successfully.",
-                    "payment_id": payment.id,
-                    "payment_link": response_data["data"]["checkout_url"]
-                }, status=status.HTTP_200_OK)
+                return Response(
+                    {
+                        "message": "Payment initiated successfully.",
+                        "payment_id": payment.id,
+                        "payment_link": response_data["data"]["checkout_url"],
+                    },
+                    status=status.HTTP_200_OK,
+                )
 
-            return Response({"error": "Failed to initiate payment", "details": response_data},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Failed to initiate payment", "details": response_data},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         except requests.RequestException as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class VerifyPaymentView(APIView):
+    """Verify the status of a payment transaction with Chapa."""
     def get(self, request, transaction_id):
         payment = get_object_or_404(Payment, transaction_id=transaction_id)
 
@@ -102,75 +125,79 @@ class VerifyPaymentView(APIView):
             if status_code != 200 or data.get("status") != "success":
                 return Response({"error": data}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Map Chapa status to Payment status
             status_map = {
                 "successful": "COMPLETED",
-                "failed": "FAILED"
+                "failed": "FAILED",
             }
-            payment.status = status_map.get(data["data"]["status"].lower(), "PENDING")
+            payment.status = status_map.get(
+                data["data"]["status"].lower(), "PENDING"
+            )
             payment.save()
 
-            # Send confirmation email asynchronously
             if payment.status == "COMPLETED":
-                send_payment_confirmation_email.delay(
+                run_task(
+                    send_payment_confirmation_email,
                     payment.booking.user.email,
                     payment.booking.id,
                 )
 
-            return Response({
-                "payment_status": payment.status,
-                "transaction_id": payment.transaction_id
-            }, status=status.HTTP_200_OK)
-
-        except requests.RequestException as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ----------------------------
-# Listing & Booking ViewSets
-# ----------------------------
-class ListingViewSet(ModelViewSet):
-    queryset = Listing.objects.all()
-    serializer_class = ListingSerializer
-
-class BookingViewSet(viewsets.ModelViewSet):
-    queryset = Booking.objects.all()
-    serializer_class = BookingSerializer
-
-    def perform_create(self, serializer):
-        # Save booking with authenticated user
-        booking = serializer.save(user=self.request.user)
-
-        # Notify guest (user)
-        if booking.user and booking.user.email:
-            send_booking_confirmation_email.delay(booking.user.email, booking.id)
-
-        # Notify host
-        if booking.listing.host and booking.listing.host.email:
-            guest_name = booking.user.get_full_name() or booking.user.username
-            send_host_notification_email.delay(
-                booking.listing.host.email,
-                booking.id,
-                guest_name
+            return Response(
+                {
+                    "payment_status": payment.status,
+                    "transaction_id": payment.transaction_id,
+                },
+                status=status.HTTP_200_OK,
             )
 
-class UserViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    Provides full CRUD: list, retrieve, create, update, delete.
-    """
+        except requests.RequestException as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
+
+# ----------------------------
+# Booking & Listings
+# ----------------------------
+class BookingViewSet(viewsets.ModelViewSet):
+    """Manage bookings (CRUD)."""
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        booking = serializer.save(user=self.request.user)
+
+        if booking.user and booking.user.email:
+            run_task(send_booking_confirmation_email, booking.user.email, booking.id)
+
+        if booking.listing.host and booking.listing.host.email:
+            guest_name = booking.user.get_full_name() or booking.user.username
+            run_task(
+                send_host_notification_email,
+                booking.listing.host.email,
+                booking.id,
+                guest_name,
+            )
+
+
+class ListingViewSet(viewsets.ModelViewSet):
+    """Manage listings (CRUD)."""
+    queryset = Listing.objects.all()
+    serializer_class = ListingSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+# ----------------------------
+# Users
+# ----------------------------
+class UserViewSet(viewsets.ModelViewSet):
+    """CRUD API endpoint for users."""
     queryset = User.objects.all()
     serializer_class = UserSerializer
-
-    # Permission: allow safe methods for everyone, restrict writes to admins
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
-        """
-        Custom endpoint to return the current authenticated user.
-        Example: GET /api/users/me/
-        """
+        """Return the current authenticated user."""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)

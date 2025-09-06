@@ -1,19 +1,26 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from .views import ListingViewSet, BookingViewSet, InitiatePaymentView, VerifyPaymentView, UserViewSet
+from .views import (
+    ListingViewSet,
+    BookingViewSet,
+    InitiatePaymentView,
+    VerifyPaymentView,
+    UserViewSet,
+    UserSignupView,
+)
 
-# Initialize DRF router
+# DRF Router
 router = DefaultRouter()
-router.register(r'listings', ListingViewSet)
-router.register(r'bookings', BookingViewSet)
-router.register(r'users', UserViewSet, basename='user')
+router.register(r"listings", ListingViewSet, basename="listing")
+router.register(r"bookings", BookingViewSet, basename="booking")
+router.register(r"users", UserViewSet, basename="user")
 
-# Standard URL patterns
+# Explicit API endpoints
 urlpatterns = [
-    path('payments/initiate/<int:booking_id>/', InitiatePaymentView.as_view(), name='initiate-payment'),
-     path('payments/verify/<str:transaction_id>/', VerifyPaymentView.as_view(), name='verify-payment'),
+    path("users/signup/", UserSignupView.as_view(), name="user-signup"),
+    path("payments/initiate/<int:booking_id>/", InitiatePaymentView.as_view(), name="initiate-payment"),
+    path("payments/verify/<str:transaction_id>/", VerifyPaymentView.as_view(), name="verify-payment"),
 ]
 
-# Include router URLs
+# Include router URLs (listings, bookings, users CRUD)
 urlpatterns += router.urls
-

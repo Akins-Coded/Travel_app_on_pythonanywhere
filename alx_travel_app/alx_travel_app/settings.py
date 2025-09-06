@@ -186,6 +186,7 @@ else:
 
 # ------------------------------------------------------------------------------
 # CELERY
+USE_CELERY = env.bool("USE_CELERY", default=False)
 # ------------------------------------------------------------------------------
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="amqp://localhost")
 CELERY_RESULT_BACKEND = "django-db"

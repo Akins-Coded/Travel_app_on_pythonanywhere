@@ -245,6 +245,79 @@ python manage.py runserver
 
 ---
 
+
+## 🌍 Endpoints
+
+### 👤 User Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | `POST` | Signup (default homepage) |
+| `/api/users/signup/` | `POST` | Signup new user (API) |
+| `/api/users/` | `GET, POST` | List all users / create user |
+| `/api/users/{id}/` | `GET, PUT, PATCH, DELETE` | Retrieve/update/delete a user |
+| `/api/users/me/` | `GET` | Get current authenticated user |
+
+#### Signup Request Example
+```json
+POST /api/users/signup/
+{
+  "username": "coded123",
+  "email": "coded@example.com",
+  "password": "securePassword!"
+}
+```
+✅ Triggers a **signup confirmation email**.
+
+---
+
+### 🏡 Listings Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/listings/` | `GET, POST` | List or create listings |
+| `/api/listings/{id}/` | `GET, PUT, PATCH, DELETE` | Retrieve/update/delete a listing |
+
+---
+
+### 📅 Booking Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/bookings/` | `GET, POST` | List or create bookings |
+| `/api/bookings/{id}/` | `GET, PUT, PATCH, DELETE` | Retrieve/update/delete a booking |
+
+✅ When a booking is created:
+- User receives booking confirmation email
+- Host receives new booking notification email
+
+---
+
+### 💳 Payment Endpoints (Chapa Integration)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/payments/initiate/{booking_id}/` | `POST` | Initiate payment for a booking |
+| `/api/payments/verify/{transaction_id}/` | `GET` | Verify payment status |
+
+✅ On successful payment:
+- Payment status is updated in DB
+- User receives a payment confirmation email
+
+---
+
+### 📖 API Documentation
+- Swagger UI → `/swagger/`
+- Redoc → `/redoc/`
+- JSON Schema → `/swagger.json`
+
+---
+
+## 📧 Email Notifications
+The following notifications are supported:
+1. **Signup Confirmation** → Sent when a user signs up
+2. **Booking Confirmation** → Sent to user after booking
+3. **Host Notification** → Sent to host when new booking is created
+4. **Payment Confirmation** → Sent to user on successful payment
+
+---
+
 ## 🏗️ Roadmap
 
 - [ ] Add Stripe/PayPal integration  
