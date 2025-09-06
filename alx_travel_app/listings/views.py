@@ -1,7 +1,7 @@
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status, viewsets, permissions, generics
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -39,6 +39,10 @@ class UserSignupView(generics.CreateAPIView):
         user = serializer.save()
         run_task(send_signup_confirmation_email, user.username, user.email)
 
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        # after saving user, redirect to listings endpoint
+        return redirect("/api/listings/")
 
 # ----------------------------
 # Chapa Payment Helpers
