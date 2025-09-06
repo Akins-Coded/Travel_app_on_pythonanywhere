@@ -36,8 +36,13 @@ if not SECRET_KEY:
         logger.warning("Using fallback SECRET_KEY in DEBUG mode.")
     else:
         raise ImproperlyConfigured("SECRET_KEY must be set in production.")
-
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+        
+ALLOWED_HOSTS = [
+    "akinscoded.pythonanywhere.com",
+    "www.akinscoded.pythonanywhere.com",
+    "127.0.0.1",
+    "localhost",
+]
 
 # Extra security for production
 if not DEBUG:
@@ -67,14 +72,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "drf_yasg",
+    "django_celery_results",
+    "django_celery_beat",
 ]
-
-# Only include Celery apps if enabled
-if USE_CELERY:
-    INSTALLED_APPS += [
-        "django_celery_results",
-        "django_celery_beat",
-    ]
 
 # ------------------------------------------------------------------------------
 # MIDDLEWARE
