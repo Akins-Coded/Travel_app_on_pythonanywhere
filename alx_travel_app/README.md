@@ -163,6 +163,7 @@ To create dummy users for testing:
 
 ```bash
 python manage.py seed_users
+python manage.py seed 
 ```
 
 ---

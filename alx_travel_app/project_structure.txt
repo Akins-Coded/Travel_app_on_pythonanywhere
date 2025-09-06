@@ -1,0 +1,89 @@
+Folder PATH listing
+Volume serial number is F87F-9C60
+C:.
+¦   .env
+¦   .gitignore
+¦   manage.py
+¦   project_structure.txt
+¦   README.md
+¦   requirements.txt
+¦   
++---alx_travel_app
+¦   ¦   .env
+¦   ¦   asgi.py
+¦   ¦   celery.py
+¦   ¦   settings.py
+¦   ¦   urls.py
+¦   ¦   wsgi.py
+¦   ¦   __init__.py
+¦   ¦   
+¦   +---__pycache__
+¦           celery.cpython-312.pyc
+¦           celery.cpython-313.pyc
+¦           settings.cpython-312.pyc
+¦           settings.cpython-313.pyc
+¦           urls.cpython-312.pyc
+¦           urls.cpython-313.pyc
+¦           wsgi.cpython-312.pyc
+¦           wsgi.cpython-313.pyc
+¦           __init__.cpython-312.pyc
+¦           __init__.cpython-313.pyc
+¦           
++---listings
+    ¦   admin.py
+    ¦   apps.py
+    ¦   models.py
+    ¦   serializers.py
+    ¦   tasks.py
+    ¦   tests.py
+    ¦   urls.py
+    ¦   views.py
+    ¦   __init__.py
+    ¦   
+    +---management
+    ¦   ¦   __init__.py
+    ¦   ¦   
+    ¦   +---commands
+    ¦   ¦   ¦   README.md
+    ¦   ¦   ¦   seed.py
+    ¦   ¦   ¦   seed_users.py
+    ¦   ¦   ¦   __init__.py
+    ¦   ¦   ¦   
+    ¦   ¦   +---__pycache__
+    ¦   ¦           seed.cpython-312.pyc
+    ¦   ¦           seed_users.cpython-312.pyc
+    ¦   ¦           __init__.cpython-312.pyc
+    ¦   ¦           
+    ¦   +---__pycache__
+    ¦           __init__.cpython-312.pyc
+    ¦           
+    +---migrations
+    ¦   ¦   0001_initial.py
+    ¦   ¦   0002_remove_listing_updated_at_listing_available_from_and_more.py
+    ¦   ¦   0003_payment.py
+    ¦   ¦   0004_remove_payment_booking_reference_booking_user_email_and_more.py
+    ¦   ¦   __init__.py
+    ¦   ¦   
+    ¦   +---__pycache__
+    ¦           0001_initial.cpython-312.pyc
+    ¦           0001_initial.cpython-313.pyc
+    ¦           0002_remove_listing_updated_at_listing_available_from_and_more.cpython-312.pyc
+    ¦           0003_payment.cpython-312.pyc
+    ¦           0004_remove_payment_booking_reference_booking_user_email_and_more.cpython-312.pyc
+    ¦           __init__.cpython-312.pyc
+    ¦           __init__.cpython-313.pyc
+    ¦           
+    +---__pycache__
+            admin.cpython-312.pyc
+            admin.cpython-313.pyc
+            apps.cpython-312.pyc
+            apps.cpython-313.pyc
+            models.cpython-312.pyc
+            models.cpython-313.pyc
+            serializers.cpython-312.pyc
+            tasks.cpython-312.pyc
+            urls.cpython-312.pyc
+            views.cpython-312.pyc
+            __init__.cpython-312.pyc
+            __init__.cpython-313.pyc
+            

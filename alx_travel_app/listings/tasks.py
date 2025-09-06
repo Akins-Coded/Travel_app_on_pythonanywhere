@@ -24,3 +24,30 @@ def send_host_notification_email(host_email, booking_id, guest_name):
     subject = "New Booking on Your Listing"
     message = f"You have a new booking (ID {booking_id}) from {guest_name}."
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [host_email])
+
+@shared_task
+def send_signup_confirmation_email(username, email):
+    subject = "🎉 Welcome to CODED-SOMETHING Travel App!"
+    message = f"""
+Hi {username},
+
+Thank you for signing up with CODED-SOMETHING Travel App!
+
+We’re excited to have you on board. You can now start exploring amazing travel listings, book your next trip, and connect with hosts easily.
+
+👉 Your login email: {email}
+
+If you did not sign up for this account, please ignore this email.
+
+Enjoy your travels! ✈️
+CODED-SOMETHING Travel Team
+"""
+    from_email = settings.DEFAULT_FROM_EMAIL or "noreply@alxtravel.com"
+
+    send_mail(
+        subject,
+        message,
+        from_email,
+        [email],
+        fail_silently=False,
+    )

@@ -1,16 +1,16 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework import status, viewsets, permissions
+from rest_framework import status, viewsets, permissions, generics
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 import requests
 
 from .models import Listing, Booking, Payment
-from .serializers import ListingSerializer, BookingSerializer, UserSerializer
+from .serializers import ListingSerializer, BookingSerializer, UserSerializer, UserSignupSerializer
 from .tasks import send_payment_confirmation_email, send_booking_confirmation_email
 
 User = get_user_model()
@@ -44,6 +44,17 @@ def chapa_verify_payment(transaction_id):
     headers = {"Authorization": f"Bearer {settings.CHAPA_SECRET_KEY}"}
     response = requests.get(url, headers=headers)
     return response.json(), response.status_code
+
+
+class UserSignupView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSignupSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        # Trigger email notification via Celery
+        send_signup_confirmation_email.delay(user.username, user.email)
 
 
 # ----------------------------
